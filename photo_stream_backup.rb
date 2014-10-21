@@ -84,13 +84,13 @@ class PhotoStreamBackUpper
   # of photo streams and copies the images within them to the specified directory
   def run
     @streams.each do |stream|
-      puts "Backing up stream '#{stream}'" if @verbose
+      puts "Backing up stream '#{stream}'"
 
       FileUtils::mkdir_p "#{@destination}/#{stream}"
 
       ids = get_ps_img_uuids(stream)
 
-      puts "Backing up #{ids.size} images..." if @verbose
+      puts "Backing up #{ids.size} images..."
       ids.each do |id|
         source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/sub-shared/#{id}/IMG_") + '*'
         dest_file = Shellwords.escape("#{@destination}/#{stream}/")
