@@ -14,7 +14,15 @@ class PhotoStreamBackUpper
     raise ArgumentError, "Unable to read destination directory" unless File.readable? File.expand_path(destination)
     @destination = File.expand_path(destination)
 
-    @streams = streams == ['all'] ? get_all_ps_names : streams
+    if streams.nil? 
+      @streams = get_all_ps_names
+      puts "No streams selected, defaulting to all: '#{@streams.join("', '")}'"
+    elsif streams == ['all']
+      @streams = get_all_ps_names
+    else
+      @streams = streams
+    end
+
     @verbose = verbose
   end
 
