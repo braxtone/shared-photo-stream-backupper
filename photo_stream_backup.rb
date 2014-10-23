@@ -124,7 +124,17 @@ if __FILE__ == $0
     end
   end.parse!
 
+   # Validate the options
+   required_opts = [:destination]
+   missing_opts = required_opts.select { |opt| options[opt].nil? }
 
+   unless missing_opts.empty?
+     raise ArgumentError, "Missing required options, please specify the following required options: #{missing_opts.join(',')}"
+     puts opts
+     exit 1
+   end
+
+  # Run all the things!!
   psb = PhotoStreamBackUpper.new(
           options[:streams], 
           options[:destination], 
