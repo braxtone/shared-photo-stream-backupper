@@ -34,6 +34,7 @@ Setup:
 0) Install Dropbox
 
 Instructions at https://www.dropbox.com/install?os=mac
+Make sure you've got a folder in your Dropbox called `Photos`
 
 1) Open a Terminal window
 
@@ -77,3 +78,4 @@ To Do:
 
 * Learn more about Automator workflows and allow a user to specify the directory that they want to back images up to
 * More specific notifications about the number of images uploaded
+* Come up with a snazzier name for this project, something clever to do with saving streams, windmills or something.
