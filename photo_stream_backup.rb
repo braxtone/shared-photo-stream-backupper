@@ -73,6 +73,15 @@ class PhotoStreamBackUpper
     results = @db.execute(sql).flatten
   end
 
+  def get_ps_album_uuid(stream_name)
+    sql ="SELECT a.GUID AS 'uuid'
+              FROM Albums AS a
+              WHERE a.name = '#{stream_name}';"
+
+    get_db_conn
+    results = @db.execute(sql).flatten.at(0)
+  end
+
   def backup_image(source, dest)
     # Pretty vanilla rsync here, additional --update option added to only copy
     # over files that have changes/are new
@@ -96,11 +105,13 @@ class PhotoStreamBackUpper
 
       FileUtils::mkdir_p "#{@destination}/#{stream}"
 
+      stream_id = get_ps_album_uuid(stream)
+
       ids = get_ps_img_uuids(stream)
 
       puts "Backing up #{ids.size} images..."
       ids.each do |id|
-        source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/sub-shared/#{id}/IMG_") + '*'
+        source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id}/IMG_") + '*'
         dest_file = Shellwords.escape("#{@destination}/#{stream}/")
         puts "Backing up source file #{source_file} to #{dest_file}" if @verbose
         backup_image(source_file, dest_file)
