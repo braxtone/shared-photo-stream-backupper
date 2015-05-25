@@ -8,7 +8,7 @@ class PhotoStreamBackUpper
   require 'shellwords'
   require 'sqlite3'
 
-  PHOTO_STREAM_DIR="#{ENV['HOME']}/Library/Application Support/iLifeAssetManagement"
+  PHOTO_STREAM_DIR="#{ENV['HOME']}/Library/Containers/com.apple.cloudphotosd/Data/Library/Application Support/com.apple.cloudphotosd/services/com.apple.photo.icloud.sharedstreams"
 
   def initialize(streams, destination, verbose = false)
     raise ArgumentError, "Unable to read destination directory" unless File.readable? File.expand_path(destination)
@@ -30,7 +30,7 @@ class PhotoStreamBackUpper
   def get_ps_db_file
     return @ps_sql_file if @ps_sql_file
 
-    share_dir = "#{PHOTO_STREAM_DIR}/state/albumshare/"
+    share_dir = "#{PHOTO_STREAM_DIR}/coremediastream-state/"
 
     # Probably a lazy way to do this with the .last method, but all 
     # you should ever get out of this query is ['.', '..', interesting_dir]
