@@ -64,13 +64,13 @@ class PhotoStreamBackUpper
   end
 
   def get_ps_img_uuids(stream_name)
-    sql ="SELECT ac.GUID AS 'uuid'
-              FROM AssetCollections AS ac 
-                JOIN Albums AS a ON a.GUID = ac.albumGUID 
+    sql ="SELECT ac.GUID AS 'uuid', ac.photoDate AS 'date'
+              FROM AssetCollections AS ac
+                JOIN Albums AS a ON a.GUID = ac.albumGUID
               WHERE a.name = '#{stream_name}';"
 
     get_db_conn
-    results = @db.execute(sql).flatten
+    results = @db.execute(sql)
   end
 
   def get_ps_album_uuid(stream_name)
@@ -111,8 +111,8 @@ class PhotoStreamBackUpper
 
       puts "Backing up #{ids.size} images..."
       ids.each do |id|
-        source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id}/IMG_") + '*'
-        dest_file = Shellwords.escape("#{@destination}/#{stream}/")
+        source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*'
+        dest_file = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.jpg")
         puts "Backing up source file #{source_file} to #{dest_file}" if @verbose
         backup_image(source_file, dest_file)
       end
