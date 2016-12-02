@@ -111,10 +111,18 @@ class PhotoStreamBackUpper
 
       puts "Backing up #{ids.size} images..."
       ids.each do |id|
-        source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*'
-        dest_file = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.jpg")
-        puts "Backing up source file #{source_file} to #{dest_file}" if @verbose
-        backup_image(source_file, dest_file)
+        source_file_jpg = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.JPG'
+        dest_file_jpg = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.jpg")
+        if !Dir.glob(source_file_jpg).empty?
+          puts "Backing up source file #{source_file_jpg} to #{dest_file_jpg}" if @verbose
+          backup_image(source_file_jpg, dest_file_jpg)
+        end
+        source_file_mov = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mov'
+        dest_file_mov = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mov")
+        if !Dir.glob(source_file_mov).empty?	
+          puts "Backing up source file #{source_file_mov} to #{dest_file_mov}" if @verbose
+          backup_image(source_file_mov, dest_file_mov)
+        end
       end
     end
   end
