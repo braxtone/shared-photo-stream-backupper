@@ -123,11 +123,18 @@ class PhotoStreamBackUpper
         end
         # now we look for movies in the same folder. 
         source_file_mov = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mov'
-        dest_file_mov = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mov")
+        dest_file_mov = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mov")   
         # look for a .mov, and sync if it exists
         if !Dir.glob(source_file_mov).empty?	
           puts "Backing up source file #{source_file_mov} to #{dest_file_mov}" if @verbose
           backup_image(source_file_mov, dest_file_mov)
+        end
+        # look for an mp4 and sync if it exists
+        source_file_mp4 = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mp4'
+        dest_file_mp4 = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mp4")
+        if !Dir.glob(source_file_mp4).empty?	
+          puts "Backing up source file #{source_file_mp4} to #{dest_file_mp4}" if @verbose
+          backup_image(source_file_mp4, dest_file_mp4)
         end
       end
     end
