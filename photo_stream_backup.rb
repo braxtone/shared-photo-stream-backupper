@@ -8,7 +8,7 @@ class PhotoStreamBackUpper
   require 'shellwords'
   require 'sqlite3'
 
-  PHOTO_STREAM_DIR="#{ENV['HOME']}/Library/Application Support/iLifeAssetManagement"
+  PHOTO_STREAM_DIR="#{ENV['HOME']}/Library/Containers/com.apple.cloudphotosd/Data/Library/Application Support/com.apple.cloudphotosd/services/com.apple.photo.icloud.sharedstreams"
 
   def initialize(streams, destination, verbose = false)
     raise ArgumentError, "Unable to read destination directory" unless File.readable? File.expand_path(destination)
@@ -30,7 +30,7 @@ class PhotoStreamBackUpper
   def get_ps_db_file
     return @ps_sql_file if @ps_sql_file
 
-    share_dir = "#{PHOTO_STREAM_DIR}/state/albumshare/"
+    share_dir = "#{PHOTO_STREAM_DIR}/coremediastream-state/"
 
     # Probably a lazy way to do this with the .last method, but all 
     # you should ever get out of this query is ['.', '..', interesting_dir]
@@ -64,13 +64,22 @@ class PhotoStreamBackUpper
   end
 
   def get_ps_img_uuids(stream_name)
-    sql ="SELECT ac.GUID AS 'uuid'
-              FROM AssetCollections AS ac 
-                JOIN Albums AS a ON a.GUID = ac.albumGUID 
+    sql ="SELECT ac.GUID AS 'uuid', ac.photoDate AS 'date'
+              FROM AssetCollections AS ac
+                JOIN Albums AS a ON a.GUID = ac.albumGUID
               WHERE a.name = '#{stream_name}';"
 
     get_db_conn
-    results = @db.execute(sql).flatten
+    results = @db.execute(sql)
+  end
+
+  def get_ps_album_uuid(stream_name)
+    sql ="SELECT a.GUID AS 'uuid'
+              FROM Albums AS a
+              WHERE a.name = '#{stream_name}';"
+
+    get_db_conn
+    results = @db.execute(sql).flatten.at(0)
   end
 
   def backup_image(source, dest)
@@ -96,14 +105,37 @@ class PhotoStreamBackUpper
 
       FileUtils::mkdir_p "#{@destination}/#{stream}"
 
+      stream_id = get_ps_album_uuid(stream)
+
       ids = get_ps_img_uuids(stream)
 
       puts "Backing up #{ids.size} images..."
+      # here we go!  each folder contains 1 or 2 files, either a image, and movie, or both
+      # in the case of the live images (which are actually just a two second movie and a picture)
       ids.each do |id|
-        source_file = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/sub-shared/#{id}/IMG_") + '*'
-        dest_file = Shellwords.escape("#{@destination}/#{stream}/")
-        puts "Backing up source file #{source_file} to #{dest_file}" if @verbose
-        backup_image(source_file, dest_file)
+        # Going to start with looking for jpg images.  If there is a jpg in there, then it will be moved as a jpg
+        source_file_jpg = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.JPG'
+        dest_file_jpg = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.jpg")
+        # look for a jpg, back it up if need be
+        if !Dir.glob(source_file_jpg).empty?
+          puts "Backing up source file #{source_file_jpg} to #{dest_file_jpg}" if @verbose
+          backup_image(source_file_jpg, dest_file_jpg)
+        end
+        # now we look for movies in the same folder. 
+        source_file_mov = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mov'
+        dest_file_mov = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mov")   
+        # look for a .mov, and sync if it exists
+        if !Dir.glob(source_file_mov).empty?	
+          puts "Backing up source file #{source_file_mov} to #{dest_file_mov}" if @verbose
+          backup_image(source_file_mov, dest_file_mov)
+        end
+        # look for an mp4 and sync if it exists
+        source_file_mp4 = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mp4'
+        dest_file_mp4 = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mp4")
+        if !Dir.glob(source_file_mp4).empty?	
+          puts "Backing up source file #{source_file_mp4} to #{dest_file_mp4}" if @verbose
+          backup_image(source_file_mp4, dest_file_mp4)
+        end
       end
     end
   end
