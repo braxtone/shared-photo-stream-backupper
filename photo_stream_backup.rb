@@ -67,7 +67,7 @@ class PhotoStreamBackUpper
     sql ="SELECT ac.GUID AS 'uuid', ac.photoDate AS 'date'
               FROM AssetCollections AS ac
                 JOIN Albums AS a ON a.GUID = ac.albumGUID
-              WHERE a.name = '#{stream_name}';"
+              WHERE a.name = \"#{stream_name}\";"
 
     get_db_conn
     results = @db.execute(sql)
@@ -76,7 +76,7 @@ class PhotoStreamBackUpper
   def get_ps_album_uuid(stream_name)
     sql ="SELECT a.GUID AS 'uuid'
               FROM Albums AS a
-              WHERE a.name = '#{stream_name}';"
+              WHERE a.name = \"#{stream_name}\";"
 
     get_db_conn
     results = @db.execute(sql).flatten.at(0)
