@@ -1,4 +1,4 @@
-<aside class="warning">
+<aside class="notice">
 This is no longer under active development. While I'm glad so many have found this script useful, I no longer have a use for it. I'm blindly accepting sane-looking pull requests. If you're interested in taking this over, fork it and I'll happily point people your way.
 </aside>
 
