@@ -14,7 +14,7 @@ class PhotoStreamBackUpper
     raise ArgumentError, "Unable to read destination directory" unless File.readable? File.expand_path(destination)
     @destination = File.expand_path(destination)
 
-    if streams.nil? 
+    if streams.nil?
       @streams = get_all_ps_names
       puts "No streams selected, defaulting to all: '#{@streams.join("', '")}'"
     elsif streams == ['all']
@@ -32,10 +32,10 @@ class PhotoStreamBackUpper
 
     share_dir = "#{PHOTO_STREAM_DIR}/coremediastream-state/"
 
-    # Probably a lazy way to do this with the .last method, but all 
+    # Probably a lazy way to do this with the .last method, but all
     # you should ever get out of this query is ['.', '..', interesting_dir]
-    sqlite_dir = Dir.entries(share_dir).select do |entry| 
-      File.directory? File.join(share_dir, entry) 
+    sqlite_dir = Dir.entries(share_dir).select do |entry|
+      File.directory? File.join(share_dir, entry)
     end.last
 
     @ps_sql_file = "#{share_dir}#{sqlite_dir}/Model.sqlite"
@@ -54,7 +54,7 @@ class PhotoStreamBackUpper
     get_db_conn.execute(sql).flatten
   end
 
-  # Returns a hash of Photo Stream names to arrays of image UUIDs 
+  # Returns a hash of Photo Stream names to arrays of image UUIDs
   def get_all_ps_img_uuids
     # Returns a hash of arrays, keys being the names of the shared photostreams
     # and the keys being an array of the UUIDs for each photo
@@ -85,7 +85,21 @@ class PhotoStreamBackUpper
   def backup_image(source, dest)
     # Pretty vanilla rsync here, additional --update option added to only copy
     # over files that have changes/are new
-    Rsync.run(source, dest, ['--update']) do |result|
+    # different pictures with same size do not get copied due to update option
+
+    #The long answer is that rsync has three ways to decide if a file is outdated:
+    #1.Compare the size of source and destination.
+    #2.Compare the timestamp of source and destination.
+    #3.Compare the static checksum of source and destination.
+    #These checks are performed before transferring data. Notably, this means the static checksum is distinct from the stream checksum - the later is computed while transferring data.
+	#By default, rsync use 1 and 2. Both 1 and 2 can be acquired together by a single stat, whereas 3 requires reading the entire file (this is independent from reading the file for transfer). Assuming only one modifier is specified, that means the following:
+	#By using --size-only, only 1 is performed - timestamps and checksum are ignored. A file is copied unless its size is identical on both ends.
+	#By using --ignore-times, neither of 1, 2 or 3 is performed. A file is always copied.
+	#By using --checksum, 3 is used in addition to 1 but 2 is not performed. A file is copied unless size and checksum match. The checksum is only computed if size matches.
+
+	#[Karla] changed update option to checksum to avoid necessary files not being copied.
+    #Rsync.run(source, dest, ['--update']) do |result|
+    Rsync.run(source, dest,['--checksum']) do |result|
       if result.success?
         result.changes.each do |change|
           puts "#{change.filename} (#{change.summary})"
@@ -110,36 +124,92 @@ class PhotoStreamBackUpper
       ids = get_ps_img_uuids(stream)
 
       puts "Backing up #{ids.size} images..."
+
       # here we go!  each folder contains 1 or 2 files, either a image, and movie, or both
       # in the case of the live images (which are actually just a two second movie and a picture)
+
+      # [Karla] totalcount accumulating gradually all images in a stream
+      # [Karla] countid current image in process
+      # [Karla] countmultiple indicates how many images have multiple extensions
+
+      totalcount=0
+      countid=0
+      countmultiple=0
       ids.each do |id|
+
         # Going to start with looking for jpg images.  If there is a jpg in there, then it will be moved as a jpg
-        source_file_jpg = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.JPG'
-        dest_file_jpg = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.jpg")
-        # look for a jpg, back it up if need be
+        # [Karla] File does not always start with IMG so removed this part. Also JPG is not always uppercase.
+
+        count=0
+
+        source_file_jpg = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/") + '*.jpg'
+        dest_file_jpg = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.#{totalcount}.jpg")
+
+        # [Karla] Look for a jpg lowercase, back it up if need be
         if !Dir.glob(source_file_jpg).empty?
           puts "Backing up source file #{source_file_jpg} to #{dest_file_jpg}" if @verbose
           backup_image(source_file_jpg, dest_file_jpg)
+          count=count+1
+          #puts count
         end
-        # now we look for movies in the same folder. 
-        source_file_mov = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mov'
-        dest_file_mov = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mov")   
+
+         # [Karla] look for a JPG uppercase, back it up if need be
+        source_file_jpg = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/") + '*.JPG'
+        dest_file_jpg = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.#{totalcount}.JPG")
+        if !Dir.glob(source_file_jpg).empty?
+          puts "Backing up source file #{source_file_jpg} to #{dest_file_jpg}" if @verbose
+          backup_image(source_file_jpg, dest_file_jpg)
+          count=count+1
+        end
+
+        # now we look for movies in the same folder.
+        # [Karla] File does not always start with IMG so removed this part.
+        source_file_mov = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/") + '*.mov'
+        dest_file_mov = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.#{totalcount}.mov")
         # look for a .mov, and sync if it exists
-        if !Dir.glob(source_file_mov).empty?	
+        if !Dir.glob(source_file_mov).empty?
           puts "Backing up source file #{source_file_mov} to #{dest_file_mov}" if @verbose
           backup_image(source_file_mov, dest_file_mov)
+          count=count+1
         end
+
         # look for an mp4 and sync if it exists
-        source_file_mp4 = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/IMG_") + '*.mp4'
-        dest_file_mp4 = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.mp4")
-        if !Dir.glob(source_file_mp4).empty?	
+        # [Karla] File does not always start with IMG so removed this part.
+        source_file_mp4 = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/") + '*.mp4'
+        dest_file_mp4 = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.#{totalcount}.mp4")
+        if !Dir.glob(source_file_mp4).empty?
           puts "Backing up source file #{source_file_mp4} to #{dest_file_mp4}" if @verbose
           backup_image(source_file_mp4, dest_file_mp4)
+          count=count+1
         end
+
+        # [Karla] look for a PNG and sync if it exists
+        source_file_png = Shellwords.escape("#{PHOTO_STREAM_DIR}/assets/#{stream_id}/#{id[0]}/") + '*.PNG'
+        dest_file_png = Shellwords.escape("#{@destination}/#{stream}/#{id[1]}.#{totalcount}.PNG")
+        if !Dir.glob(source_file_png).empty?
+          puts "Backing up source file #{source_file_png} to #{dest_file_png}" if @verbose
+          backup_image(source_file_png, dest_file_png)
+          count=count+1
+        end
+
+        countid=countid+1
+
+        #[Karla] keep track of errors
+        if count>0 then totalcount=totalcount+1 end
+        if count>1 then countmultiple=countmultiple+1 end
+        if count===0 then puts "Not succeeding to backup source file #{source_file_jpg} to #{dest_file_jpg}" end
+
+		#[Karla] puts "image #{countid} imagetypes #{count} totalimages #{totalcount}"
+
       end
+
+     	#[Karla] keep track of errors
+      	puts "Really backed up #{totalcount} images, plus #{countmultiple} extra extensions."
     end
   end
 end
+
+
 
 if __FILE__ == $0
   options = {}
@@ -176,8 +246,8 @@ if __FILE__ == $0
 
   # Run all the things!!
   psb = PhotoStreamBackUpper.new(
-          options[:streams], 
-          options[:destination], 
+          options[:streams],
+          options[:destination],
           options[:verbose]
        )
   psb.run
