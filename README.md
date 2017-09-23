@@ -1,3 +1,7 @@
+<aside class="warning">
+This is no longer under active development. While I'm glad so many have found this script useful, I no longer have a use for it. I'm blindly accepting sane-looking pull requests. If you're interested in taking this over, fork it and I'll happily point people your way.
+</aside>
+
 shared-photo-stream-backupper
 =============================
 
@@ -42,9 +46,9 @@ Open Finder and go to Utilities > Terminal
 
 2) Install the required Ruby libraries:
 ```bash
-sudo gem install rsync sqlite3
+# You should use Bundler for this, this was written either before Bundler or before I learned about it.
+gem install rsync sqlite3
 ```
-You'll be prompted to type your password, nothing will appear on screen (security reasons) so just type it and press Enter.
 
 3) Download the code on this page using one of the following methods:
 
